@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jev Playground</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-soft: #f9fafb;
+    --border: #e3e6ea;
+    --border-strong: #cfd4da;
+    --text: #14171a;
+    --muted: #5c646e;
+    --accent: #4f46e5;
+    --accent-soft: #eef0ff;
+    --accent-text: #ffffff;
+    --good: #157f4b;
+    --good-soft: #e6f5ee;
+    --warn: #9a3412;
+    --danger: #b42318;
+    --danger-soft: #fdeceb;
+    --bar-track: #edeff2;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.06);
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116;
+      --panel: #161a21;
+      --panel-soft: #1b2028;
+      --border: #262c36;
+      --border-strong: #39414d;
+      --text: #e9edf3;
+      --muted: #9aa4b2;
+      --accent: #8b8cf7;
+      --accent-soft: #232744;
+      --accent-text: #0e1116;
+      --good: #5ddc9b;
+      --good-soft: #16301f;
+      --warn: #f3b27a;
+      --danger: #ff9c92;
+      --danger-soft: #33201f;
+      --bar-track: #232a34;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 72px; }
+
+  header.page-head { margin-bottom: 22px; }
+
+  .page-head h1 { font-size: 27px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+
+  .page-head p.lede { margin: 0 0 12px; color: var(--muted); max-width: 68ch; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .badge.is-mock .dot { background: var(--warn); }
+  .badge.is-live .dot { background: var(--good); }
+  .badge.is-unknown .dot { background: var(--border-strong); }
+
+  main { display: grid; gap: 18px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 18px 20px;
+  }
+
+  .panel h2 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin: 0 0 14px; font-weight: 700;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .presets { margin-bottom: 12px; }
+
+  label.field { display: block; margin-bottom: 14px; }
+
+  label.field > span.lbl,
+  .lbl {
+    display: block;
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  input[type="text"], select, textarea {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--panel-soft);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 9px 11px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  textarea { min-height: 210px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+
+  input[type="text"]:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-color: var(--accent);
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    color: var(--text);
+    padding: 8px 13px;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  }
+
+  button:hover:not(:disabled) { background: var(--panel-soft); border-color: var(--accent); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  button.ghost { background: transparent; }
+
+  button.tiny { padding: 4px 9px; font-size: 12.5px; }
+
+  button.danger { color: var(--danger); border-color: var(--border-strong); }
+  button.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-soft); }
+
+  button.primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    font-weight: 650;
+    padding: 12px 22px;
+    font-size: 15.5px;
+  }
+
+  button.primary:hover:not(:disabled) { filter: brightness(1.06); background: var(--accent); border-color: var(--accent); }
+
+  .checkline { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+  .checkline input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .checkline label { cursor: pointer; }
+
+  .qcard {
+    border: 1px solid var(--border);
+    background: var(--panel-soft);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .qcard-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+  .qnum {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 3px 9px; border-radius: 999px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 12px; }
+  .grid-2.narrow { grid-template-columns: 1fr; }
+
+  fieldset.criteria { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 0; }
+  fieldset.criteria legend { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 0 6px; }
+
+  .criteria-note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+
+  .opt-row { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(140px, 2fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+  .actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  .spinner {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #fff;
+    display: inline-block;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .spinner { border-color: rgba(14, 17, 22, 0.35); border-top-color: var(--accent-text); }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .kbd-hint { font-size: 12.5px; color: var(--muted); }
+
+  kbd {
+    font-family: inherit; font-size: 11.5px;
+    border: 1px solid var(--border-strong); border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 5px; background: var(--panel);
+  }
+
+  .error-box {
+    border: 1px solid var(--danger);
+    background: var(--danger-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .error-box h3 { margin: 0 0 6px; font-size: 15px; color: var(--danger); }
+  .error-box p { margin: 0 0 6px; font-size: 14px; }
+  .error-box .meta { font-size: 12.5px; color: var(--muted); }
+
+  .inline-error { color: var(--danger); font-size: 12.5px; margin: 8px 0 0; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+
+  .stat {
+    flex: 1 1 130px;
+    background: var(--panel-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+
+  .stat .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 650; }
+  .stat .v { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 18px;
+    margin-bottom: 14px;
+  }
+
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .card-title { font-size: 16px; font-weight: 650; margin: 0; }
+  .card-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+
+  .pill {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+  }
+
+  .big-number { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; margin: 6px 0 2px; }
+  .verdict { font-size: 14.5px; color: var(--muted); margin: 6px 0 12px; }
+
+  .bar-row { margin-bottom: 10px; }
+  .bar-label { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; margin-bottom: 4px; }
+  .bar-label .name { font-weight: 600; }
+  .bar-label .pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .bar-track { height: 10px; background: var(--bar-track); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; width: 0; border-radius: 999px; background: var(--accent); transition: width 0.55s cubic-bezier(0.22, 0.61, 0.36, 1); }
+  .bar-fill.is-winner { background: var(--good); }
+  .bar-fill.is-score { background: var(--accent); }
+
+  .winner {
+    border: 1px solid var(--good);
+    background: var(--good-soft);
+    border-radius: var(--radius-sm);
+    padding: 11px 13px;
+    margin-bottom: 14px;
+  }
+
+  .winner .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--good); }
+  .winner .v { font-size: 19px; font-weight: 700; margin-top: 2px; }
+
+  .opt-desc { font-size: 12.5px; color: var(--muted); }
+
+  .conf-note { font-size: 12.5px; color: var(--muted); border-top: 1px dashed var(--border-strong); padding-top: 9px; margin-top: 12px; }
+
+  details.raw { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); overflow: hidden; }
+  details.raw > summary {
+    cursor: pointer; padding: 13px 18px; font-weight: 650; font-size: 14px;
+    list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  details.raw > summary::-webkit-details-marker { display: none; }
+  details.raw > summary::after { content: "+"; font-size: 18px; color: var(--muted); font-weight: 400; }
+  details.raw[open] > summary::after { content: "\2212"; }
+  details.raw > .raw-body { border-top: 1px solid var(--border); padding: 0 18px 16px; }
+
+  pre {
+    margin: 12px 0 0;
+    background: var(--panel-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    max-height: 340px;
+  }
+
+  .empty { color: var(--muted); font-size: 14px; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  @media (max-width: 700px) {
+    .opt-row { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .big-number { font-size: 34px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>Jev Playground</h1>
+    <p class="lede">
+      Jev is TypeSafe&rsquo;s &ldquo;System One&rdquo; model: it never writes prose, it only answers typed
+      questions about a piece of context and returns calibrated probabilities. Paste any state below, ask
+      yes/no, multiple-choice, or rating questions, and see the numbers come back.
+    </p>
+    <div class="badges">
+      <span class="badge" id="model-badge"><span class="dot"></span><span id="model-name">&mdash;</span></span>
+      <span class="badge is-unknown" id="mock-badge"><span class="dot"></span><span id="mock-flag">no response yet</span></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="state-heading">
+      <h2 id="state-heading">1 &middot; State</h2>
+      <div class="row presets" role="group" aria-label="Sample states">
+        <button type="button" class="tiny" data-preset="ticket">Support ticket</button>
+        <button type="button" class="tiny" data-preset="review">Product review</button>
+        <button type="button" class="tiny" data-preset="chat">Chat log</button>
+        <button type="button" class="tiny" data-preset="json">JSON record</button>
+      </div>
+      <label class="field" for="state-input">
+        <span class="lbl">State &mdash; the context Jev reasons about</span>
+      </label>
+      <textarea id="state-input" aria-describedby="state-error" spellcheck="false"></textarea>
+      <div class="checkline">
+        <input type="checkbox" id="json-state-toggle" />
+        <label for="json-state-toggle">Send state as JSON (parse the textarea and send an object/array instead of a string)</label>
+      </div>
+      <p class="inline-error" id="state-error" role="alert" aria-live="polite" hidden></p>
+    </section>
+
+    <section class="panel" aria-labelledby="questions-heading">
+      <h2 id="questions-heading">2 &middot; Questions</h2>
+      <div id="question-list"></div>
+      <div class="row">
+        <button type="button" class="tiny" data-add-type="noul">+ Yes / no</button>
+        <button type="button" class="tiny" data-add-type="choice">+ Choice</button>
+        <button type="button" class="tiny" data-add-type="score">+ Score</button>
+      </div>
+      <p class="inline-error" id="questions-error" role="alert" aria-live="polite" hidden></p>
+    </section>
+
+    <div class="actions">
+      <button type="button" class="primary" id="ask-button">
+        <span class="spinner" id="spinner" hidden></span>
+        <span id="ask-button-label">Ask Jev</span>
+      </button>
+      <span class="kbd-hint">Tip: <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> to ask</span>
+    </div>
+
+    <section id="error-panel" aria-live="assertive" hidden></section>
+
+    <section aria-labelledby="results-heading">
+      <h2 id="results-heading" class="sr-only">Results</h2>
+      <div id="results-summary" aria-live="polite"></div>
+      <div id="stats-strip"></div>
+      <div id="answer-cards" aria-live="polite"></div>
+    </section>
+
+    <details class="raw" id="request-details">
+      <summary>Request JSON &mdash; exactly what was sent</summary>
+      <div class="raw-body"><pre id="request-json">Nothing sent yet.</pre></div>
+    </details>
+
+    <details class="raw" id="response-details">
+      <summary>Raw response &mdash; exactly what came back</summary>
+      <div class="raw-body"><pre id="response-json">Nothing received yet.</pre></div>
+    </details>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var MODEL_DEFAULT = "typesafe/jev-1.13";
+
+  var PRESETS = {
+    ticket: {
+      label: "Support ticket",
+      text: [
+        'Ticket #48210 - "Charged twice for the Pro plan"',
+        "Customer: Dana Whitfield (dana@acme-ops.com), Pro plan since March 2024, 14 seats, 6 active.",
+        "Opened 2 days ago after the annual renewal on 2026-09-14 posted two charges of $240 each.",
+        "Dana says the duplicate charge drained the team card and wants a refund plus an explanation.",
+        "Support (Priya) replied once, asked for a bank statement screenshot, then went quiet for 30 hours.",
+        "Sentiment: frustrated but polite. Dana wrote: \"I have been happy with the product, I just need this fixed.\"",
+        "Account notes: no prior billing disputes, NPS 8, renewal date 2027-09-14."
+      ].join("\n")
+    },
+    review: {
+      label: "Product review",
+      text: [
+        "Soundcore Q30 headphones - 4/5 stars (verified purchase, 2026-08-02)",
+        "Battery easily lasts 40 hours, exactly as advertised. Noise cancelling is fine on a plane, weak in a busy cafe.",
+        "The companion app is clunky and forgets my EQ preset about once a week.",
+        "Comfort is great for long flights, no ear pressure after 6 hours of wear.",
+        "For $79 these are a steal, but if active noise cancelling is your top priority, spend more."
+      ].join("\n")
+    },
+    chat: {
+      label: "Chat log",
+      text: [
+        "[10:02] customer: hi, my export keeps failing at 80%",
+        "[10:03] agent: sorry about that - which plan are you on?",
+        "[10:03] customer: team plan, exporting about 40k rows",
+        "[10:05] agent: 40k rows can hit the 30 second timeout on the shared workers",
+        "[10:06] customer: can I raise it?",
+        "[10:07] agent: not yet, but I can move you to a dedicated worker this week",
+        "[10:09] customer: that works, thanks. any ETA?",
+        "[10:10] agent: I will email you by Thursday"
+      ].join("\n")
+    },
+    json: {
+      label: "JSON record",
+      text: [
+        "{",
+        '  "account_id": "acc_9f31",',
+        '  "plan": "growth",',
+        '  "seats": 42,',
+        '  "seats_active_30d": 31,',
+        '  "mrr_usd": 1890,',
+        '  "tenure_months": 19,',
+        '  "support_tickets_90d": 7,',
+        '  "last_login_days_ago": 12,',
+        '  "nps": 6,',
+        '  "renewal_date": "2026-11-02",',
+        '  "notes": "Champion left the company in July; no replacement identified."',
+        "}"
+      ].join("\n")
+    }
+  };
+
+  var DEFAULT_QUESTIONS = [
+    {
+      id: "q1",
+      type: "noul",
+      instructions: "Is this customer likely to churn or downgrade in the next 90 days?",
+      criteria: { true: "Signals of churn: cancellation language, unresolved blockers, falling usage, no internal champion.", false: "Signals of retention: healthy usage, issues being resolved, positive sentiment, clear value." }
+    },
+    {
+      id: "q2",
+      type: "choice",
+      instructions: "What is the primary intent of this message?",
+      criteria: [
+        { name: "billing", description: "Money, invoices, refunds or plan charges" },
+        { name: "technical_issue", description: "Something is broken or not working" },
+        { name: "cancellation", description: "Wants to leave or downgrade" },
+        { name: "feature_request", description: "Asking for something new" }
+      ]
+    },
+    {
+      id: "q3",
+      type: "score",
+      instructions: "How urgent is this for the customer?",
+      criteria: ["Not urgent", "Slightly urgent", "Urgent", "Critical - needs action today"]
+    }
+  ];
+
+  var state = {
+    questions: [],
+    presets: PRESETS,
+    lastRequest: null,
+    lastResponse: null,
+    inFlight: false,
+    uidCounter: 0
+  };
+
+  var elements = {};
+
+  function el(tagName, className, text) {
+    var node = document.createElement(tagName);
+    if (className) { node.className = className; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+
+  function clear(node) {
+    while (node.firstChild) { node.removeChild(node.firstChild); }
+  }
+
+  function show(node) { node.hidden = false; }
+
+  function hide(node) { node.hidden = true; }
+
+  function setText(node, text) { node.textContent = String(text); }
+
+  function makeId(prefix, uid) { return prefix + "-" + uid; }
+
+  /* ---------------- state textarea ---------------- */
+
+  function applyPreset(key) {
+    var preset = state.presets[key];
+    if (!preset) { return; }
+    elements.stateInput.value = preset.text;
+    hide(elements.stateError);
+  }
+
+  function parseStateForSend() {
+    var raw = elements.stateInput.value;
+    if (raw.trim() === "") {
+      return { ok: false, message: "State is required. Paste some context or pick a sample." };
+    }
+    if (!elements.jsonToggle.checked) {
+      return { ok: true, value: raw };
+    }
+    try {
+      return { ok: true, value: JSON.parse(raw) };
+    } catch (parseError) {
+      return { ok: false, message: "State is not valid JSON: " + parseError.message };
+    }
+  }
+
+  /* ---------------- question builder ---------------- */
+
+  function nextQuestionId() {
+    var index = state.questions.length + 1;
+    var candidate = "q" + index;
+    var taken = {};
+    state.questions.forEach(function (question) { taken[question.id] = true; });
+    while (taken[candidate]) {
+      index += 1;
+      candidate = "q" + index;
+    }
+    return candidate;
+  }
+
+  function addQuestion(type) {
+    var question = {
+      uid: state.uidCounter += 1,
+      id: nextQuestionId(),
+      type: type,
+      instructions: "",
+      criteria: null
+    };
+    if (type === "noul") {
+      question.criteria = { true: "", false: "" };
+    } else if (type === "choice") {
+      question.criteria = [
+        { name: "option_a", description: "" },
+        { name: "option_b", description: "" }
+      ];
+    } else {
+      question.criteria = ["Level 0", "Level 1"];
+    }
+    state.questions.push(question);
+    renderQuestionList();
+    var card = elements.questionList.querySelector('[data-uid="' + question.uid + '"]');
+    if (card) {
+      var instructionsInput = card.querySelector(".q-instructions");
+      if (instructionsInput) { instructionsInput.focus(); }
+    }
+  }
+
+  function removeQuestion(uid) {
+    state.questions = state.questions.filter(function (question) { return question.uid !== uid; });
+    renderQuestionList();
+  }
+
+  function renderQuestionList() {
+    clear(elements.questionList);
+    if (state.questions.length === 0) {
+      elements.questionList.appendChild(el("p", "empty", "No questions yet. Add one below."));
+      return;
+    }
+    state.questions.forEach(function (question, index) {
+      elements.questionList.appendChild(buildQuestionCard(question, index));
+    });
+  }
+
+  function buildQuestionCard(question, index) {
+    var card = el("article", "qcard");
+    card.setAttribute("data-uid", String(question.uid));
+
+    var head = el("div", "qcard-head");
+    head.appendChild(el("span", "qnum", "Question " + (index + 1)));
+    var removeButton = el("button", "tiny danger", "Remove");
+    removeButton.type = "button";
+    removeButton.setAttribute("data-action", "remove-question");
+    removeButton.setAttribute("aria-label", "Remove question " + (index + 1));
+    head.appendChild(removeButton);
+    card.appendChild(head);
+
+    var grid = el("div", "grid-2");
+
+    var idField = el("label", "field");
+    idField.appendChild(el("span", "lbl", "Id"));
+    var idInput = el("input");
+    idInput.type = "text";
+    idInput.value = question.id;
+    idInput.className = "q-id";
+    idInput.setAttribute("data-field", "id");
+    idInput.setAttribute("aria-label", "Question id");
+    idField.appendChild(idInput);
+    grid.appendChild(idField);
+
+    var typeField = el("label", "field");
+    typeField.appendChild(el("span", "lbl", "Type"));
+    var typeSelect = el("select", "q-type");
+    typeSelect.setAttribute("data-field", "type");
+    typeSelect.setAttribute("aria-label", "Question type");
+    [["noul", "noul - yes / no"], ["choice", "choice - pick one option"], ["score", "score - rate against ordered levels"]].forEach(function (pair) {
+      var option = el("option", null, pair[1]);
+      option.value = pair[0];
+      if (question.type === pair[0]) { option.selected = true; }
+      typeSelect.appendChild(option);
+    });
+    typeField.appendChild(typeSelect);
+    grid.appendChild(typeField);
+
+    card.appendChild(grid);
+
+    var instructionsField = el("label", "field");
+    instructionsField.appendChild(el("span", "lbl", "Instructions"));
+    var instructionsInput = el("input");
+    instructionsInput.type = "text";
+    instructionsInput.className = "q-instructions";
+    instructionsInput.value = question.instructions;
+    instructionsInput.placeholder = "e.g. Is this customer likely to churn?";
+    instructionsInput.setAttribute("data-field", "instructions");
+    instructionsInput.setAttribute("aria-label", "Question instructions");
+    instructionsField.appendChild(instructionsInput);
+    card.appendChild(instructionsField);
+
+    var criteriaBox = el("fieldset", "criteria");
+    criteriaBox.appendChild(el("legend", null, "Criteria"));
+    var criteriaBody = el("div", "criteria-body");
+    criteriaBox.appendChild(criteriaBody);
+    renderCriteriaInto(question, criteriaBody);
+    card.appendChild(criteriaBox);
+
+    return card;
+  }
+
+  function renderCriteriaInto(question, container) {
+    clear(container);
+
+    if (question.type === "noul") {
+      container.appendChild(el("p", "criteria-note", "Optional: describe what counts as yes and as no."));
+      container.appendChild(buildTextRow("What yes means", "criteria-true", question.criteria.true, "e.g. clear intent to cancel"));
+      container.appendChild(buildTextRow("What no means", "criteria-false", question.criteria.false, "e.g. still getting value"));
+      return;
+    }
+
+    if (question.type === "choice") {
+      container.appendChild(el("p", "criteria-note", "At least 2 options. Each option becomes a key in criteria."));
+      question.criteria.forEach(function (option, optionIndex) {
+        var row = el("div", "opt-row");
+
+        var nameInput = el("input");
+        nameInput.type = "text";
+        nameInput.value = option.name;
+        nameInput.placeholder = "option name";
+        nameInput.setAttribute("data-field", "option-name");
+        nameInput.setAttribute("data-index", String(optionIndex));
+        nameInput.setAttribute("aria-label", "Option " + (optionIndex + 1) + " name");
+        row.appendChild(nameInput);
+
+        var descriptionInput = el("input");
+        descriptionInput.type = "text";
+        descriptionInput.value = option.description || "";
+        descriptionInput.placeholder = "description (optional)";
+        descriptionInput.setAttribute("data-field", "option-description");
+        descriptionInput.setAttribute("data-index", String(optionIndex));
+        descriptionInput.setAttribute("aria-label", "Option " + (optionIndex + 1) + " description");
+        row.appendChild(descriptionInput);
+
+        row.appendChild(buildRemoveRowButton("option", optionIndex));
+        container.appendChild(row);
+      });
+      container.appendChild(buildAddRowButton("+ Add option", "add-option"));
+      return;
+    }
+
+    container.appendChild(el("p", "criteria-note", "At least 2 levels, ordered from lowest to highest. Index 0 is the lowest."));
+    question.criteria.forEach(function (level, levelIndex) {
+      var row = el("div", "opt-row");
+
+      var levelInput = el("input");
+      levelInput.type = "text";
+      levelInput.value = level;
+      levelInput.placeholder = "level label";
+      levelInput.setAttribute("data-field", "level");
+      levelInput.setAttribute("data-index", String(levelIndex));
+      levelInput.setAttribute("aria-label", "Level " + levelIndex + " label");
+      row.appendChild(levelInput);
+
+      var spacer = el("span", "opt-desc", "level index " + levelIndex);
+      row.appendChild(spacer);
+
+      row.appendChild(buildRemoveRowButton("level", levelIndex));
+      container.appendChild(row);
+    });
+    container.appendChild(buildAddRowButton("+ Add level", "add-level"));
+  }
+
+  function buildTextRow(labelText, fieldName, value, placeholder) {
+    var field = el("label", "field");
+    field.appendChild(el("span", "lbl", labelText));
+    var input = el("input");
+    input.type = "text";
+    input.value = value || "";
+    input.placeholder = placeholder || "";
+    input.setAttribute("data-field", fieldName);
+    input.setAttribute("aria-label", labelText);
+    field.appendChild(input);
+    return field;
+  }
+
+  function buildRemoveRowButton(kind, index) {
+    var button = el("button", "tiny danger", "Remove");
+    button.type = "button";
+    button.setAttribute("data-action", "remove-row");
+    button.setAttribute("data-kind", kind);
+    button.setAttribute("data-index", String(index));
+    button.setAttribute("aria-label", "Remove " + kind + " " + (index + 1));
+    return button;
+  }
+
+  function buildAddRowButton(label, action) {
+    var button = el("button", "tiny", label);
+    button.type = "button";
+    button.setAttribute("data-action", action);
+    return button;
+  }
+
+  function findQuestion(uid) {
+    var found = null;
+    state.questions.forEach(function (question) {
+      if (question.uid === uid) { found = question; }
+    });
+    return found;
+  }
+
+  function findCardFor(node) {
+    var card = node.closest ? node.closest(".qcard") : null;
+    if (!card) { return null; }
+    var uid = Number(card.getAttribute("data-uid"));
+    var question = findQuestion(uid);
+    if (!question) { return null; }
+    return { card: card, question: question };
+  }
+
+  function refreshCriteria(question, card) {
+    var body = card.querySelector(".criteria-body");
+    if (body) { renderCriteriaInto(question, body); }
+  }
+
+  function handleQuestionInput(event) {
+    var target = event.target;
+    var field = target.getAttribute && target.getAttribute("data-field");
+    if (!field) { return; }
+    var context = findCardFor(target);
+    if (!context) { return; }
+    var question = context.question;
+    var index = Number(target.getAttribute("data-index"));
+
+    if (field === "id") { question.id = target.value; return; }
+    if (field === "instructions") { question.instructions = target.value; return; }
+    if (field === "criteria-true") { question.criteria.true = target.value; return; }
+    if (field === "criteria-false") { question.criteria.false = target.value; return; }
+    if (field === "option-name") { question.criteria[index].name = target.value; return; }
+    if (field === "option-description") { question.criteria[index].description = target.value; return; }
+    if (field === "level") { question.criteria[index] = target.value; return; }
+  }
+
+  function handleQuestionTypeChange(event) {
+    var target = event.target;
+    if (!target.classList || !target.classList.contains("q-type")) { return; }
+    var context = findCardFor(target);
+    if (!context) { return; }
+    var question = context.question;
+    question.type = target.value;
+    if (question.type === "noul") {
+      question.criteria = { true: "", false: "" };
+    } else if (question.type === "choice") {
+      question.criteria = [
+        { name: "option_a", description: "" },
+        { name: "option_b", description: "" }
+      ];
+    } else {
+      question.criteria = ["Level 0", "Level 1"];
+    }
+    refreshCriteria(question, context.card);
+  }
+
+  function handleQuestionClick(event) {
+    var target = event.target;
+    if (!target.closest) { return; }
+    var actionButton = target.closest("[data-action]");
+    if (!actionButton) { return; }
+    var action = actionButton.getAttribute("data-action");
+    var context = findCardFor(actionButton);
+    if (!context) { return; }
+    var question = context.question;
+
+    if (action === "remove-question") {
+      removeQuestion(question.uid);
+      return;
+    }
+    if (action === "add-option") {
+      question.criteria.push({ name: "", description: "" });
+      refreshCriteria(question, context.card);
+      return;
+    }
+    if (action === "add-level") {
+      question.criteria.push("Level " + question.criteria.length);
+      refreshCriteria(question, context.card);
+      return;
+    }
+    if (action === "remove-row") {
+      var rowIndex = Number(actionButton.getAttribute("data-index"));
+      var kind = actionButton.getAttribute("data-kind");
+      if (kind === "option") {
+        if (question.criteria.length <= 2) { return; }
+        question.criteria.splice(rowIndex, 1);
+      } else {
+        if (question.criteria.length <= 2) { return; }
+        question.criteria.splice(rowIndex, 1);
+      }
+      refreshCriteria(question, context.card);
+    }
+  }
+
+  /* ---------------- validation ---------------- */
+
+  function validateQuestions() {
+    var errors = [];
+    var payload = {};
+    var usedIds = {};
+
+    if (state.questions.length === 0) {
+      errors.push("Add at least one question before asking Jev.");
+      return { errors: errors, questions: null };
+    }
+
+    state.questions.forEach(function (question, index) {
+      var label = "Question " + (index + 1);
+      var instructions = String(question.instructions || "").trim();
+      if (instructions === "") {
+        return;
+      }
+
+      var id = String(question.id || "").trim();
+      if (id === "") {
+        errors.push(label + ": the id cannot be empty.");
+        return;
+      }
+      if (usedIds[id]) {
+        errors.push(label + ": the id \"" + id + "\" is used twice. Ids must be unique.");
+        return;
+      }
+      usedIds[id] = true;
+
+      if (question.type === "noul") {
+        var noulCriteria = {};
+        var yesMeaning = String((question.criteria && question.criteria.true) || "").trim();
+        var noMeaning = String((question.criteria && question.criteria.false) || "").trim();
+        if (yesMeaning !== "") { noulCriteria.true = yesMeaning; }
+        if (noMeaning !== "") { noulCriteria.false = noMeaning; }
+        payload[id] = { type: "noul", instructions: instructions };
+        if (Object.keys(noulCriteria).length > 0) { payload[id].criteria = noulCriteria; }
+        return;
+      }
+
+      if (question.type === "choice") {
+        var options = {};
+        var optionCount = 0;
+        (question.criteria || []).forEach(function (option) {
+          var name = String(option.name || "").trim();
+          if (name === "") { return; }
+          var description = String(option.description || "").trim();
+          options[name] = description === "" ? null : description;
+          optionCount += 1;
+        });
+        if (optionCount < 2) {
+          errors.push(label + ": choice questions need at least 2 named options.");
+          return;
+        }
+        payload[id] = { type: "choice", instructions: instructions, criteria: options };
+        return;
+      }
+
+      var levels = [];
+      (question.criteria || []).forEach(function (level) {
+        var levelLabel = String(level || "").trim();
+        if (levelLabel !== "") { levels.push(levelLabel); }
+      });
+      if (levels.length < 2) {
+        errors.push(label + ": score questions need at least 2 non-empty levels.");
+        return;
+      }
+      payload[id] = { type: "score", instructions: instructions, criteria: levels };
+    });
+
+    if (!payload || Object.keys(payload).length === 0) {
+      errors.push("Every question is missing instructions, so there is nothing to ask. Fill in at least one instructions field.");
+    }
+
+    return { errors: errors, questions: payload };
+  }
+
+  /* ---------------- ask ---------------- */
+
+  function setBusy(isBusy) {
+    state.inFlight = isBusy;
+    elements.askButton.disabled = isBusy;
+    elements.askButton.setAttribute("aria-busy", isBusy ? "true" : "false");
+    setText(elements.askButtonLabel, isBusy ? "Asking Jev\u2026" : "Ask Jev");
+    if (isBusy) { show(elements.spinner); } else { hide(elements.spinner); }
+  }
+
+  function showInlineError(node, messages) {
+    if (messages.length === 0) {
+      hide(node);
+      node.textContent = "";
+      return;
+    }
+    node.textContent = messages.join(" ");
+    show(node);
+  }
+
+  function showRequestError(payload) {
+    var panel = elements.errorPanel;
+    clear(panel);
+
+    var box = el("div", "error-box");
+    box.appendChild(el("h3", null, "Jev could not answer"));
+
+    var statusText = payload && payload.status !== undefined && payload.status !== null ? payload.status : "unknown";
+    box.appendChild(el("p", null, (payload && payload.error) ? payload.error : "The request failed with no error message."));
+    if (payload && payload.hint) {
+      box.appendChild(el("p", null, "Hint: " + payload.hint));
+    }
+    box.appendChild(el("p", "meta", "HTTP status: " + statusText));
+
+    if (payload && payload.details && Object.keys(payload.details).length > 0) {
+      var details = el("details", "raw");
+      details.appendChild(el("summary", null, "Error details"));
+      var body = el("div", "raw-body");
+      var pre = el("pre", null, JSON.stringify(payload.details, null, 2));
+      body.appendChild(pre);
+      details.appendChild(body);
+      box.appendChild(details);
+    }
+
+    panel.appendChild(box);
+    show(panel);
+  }
+
+  function askJev() {
+    if (state.inFlight) { return; }
+
+    hide(elements.errorPanel);
+    clear(elements.errorPanel);
+
+    var stateResult = parseStateForSend();
+    if (!stateResult.ok) {
+      showInlineError(elements.stateError, [stateResult.message]);
+      setText(elements.resultsSummary, "");
+      return;
+    }
+    hide(elements.stateError);
+
+    var validation = validateQuestions();
+    if (validation.errors.length > 0) {
+      showInlineError(elements.questionsError, validation.errors);
+      setText(elements.resultsSummary, "");
+      return;
+    }
+    hide(elements.questionsError);
+
+    var requestBody = { state: stateResult.value, questions: validation.questions };
+    state.lastRequest = requestBody;
+    elements.requestJson.textContent = JSON.stringify(requestBody, null, 2);
+
+    setBusy(true);
+    setText(elements.resultsSummary, "Waiting for Jev\u2026");
+
+    fetch("/api/decide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    }).then(function (response) {
+      return response.text().then(function (text) {
+        var parsed = null;
+        try { parsed = JSON.parse(text); } catch (parseError) { parsed = null; }
+        return { status: response.status, ok: response.ok, parsed: parsed, text: text };
+      });
+    }).then(function (result) {
+      state.lastResponse = result.parsed !== null ? result.parsed : { ok: false, status: result.status, error: "Response was not JSON.", details: { body: result.text.slice(0, 2000) } };
+      elements.responseJson.textContent = JSON.stringify(state.lastResponse, null, 2);
+
+      if (result.parsed === null) {
+        showRequestError({ ok: false, error: "The server returned a non-JSON response.", status: result.status, hint: "Check the server logs; the response body is in the raw response panel." });
+        setText(elements.resultsSummary, "");
+        return;
+      }
+      if (result.parsed.ok === false || !result.ok) {
+        showRequestError(result.parsed);
+        setText(elements.resultsSummary, "");
+        return;
+      }
+      renderSuccess(result.parsed);
+    }).catch(function (networkError) {
+      state.lastResponse = { ok: false, error: String(networkError && networkError.message ? networkError.message : networkError) };
+      elements.responseJson.textContent = JSON.stringify(state.lastResponse, null, 2);
+      showRequestError({ ok: false, error: "Could not reach /api/decide.", status: "network error", hint: "Is the server running on this origin? " + state.lastResponse.error });
+      setText(elements.resultsSummary, "");
+    }).then(function () {
+      setBusy(false);
+    });
+  }
+
+  /* ---------------- formatting helpers ---------------- */
+
+  function formatPercent(value) {
+    if (typeof value !== "number" || !isFinite(value)) { return "\u2014"; }
+    return (value * 100).toFixed(1) + "%";
+  }
+
+  function formatNumber(value) {
+    if (typeof value !== "number" || !isFinite(value)) { return "\u2014"; }
+    return String(Math.round(value));
+  }
+
+  function formatCost(value) {
+    if (value === null || value === undefined || value === "") { return "n/a"; }
+    var numeric = Number(value);
+    if (!isFinite(numeric)) { return "n/a"; }
+    if (numeric === 0) { return "$0.000000"; }
+    if (numeric > 0 && numeric < 0.000001) { return "< $0.000001"; }
+    return "$" + numeric.toFixed(6);
+  }
+
+  function formatScore(value) {
+    if (typeof value !== "number" || !isFinite(value)) { return "\u2014"; }
+    return value.toFixed(3);
+  }
+
+  function noulVerdict(probability) {
+    if (probability >= 0.85) { return "Jev thinks this is very likely true."; }
+    if (probability >= 0.65) { return "Jev thinks this is likely true."; }
+    if (probability > 0.55) { return "Jev leans slightly toward true."; }
+    if (probability >= 0.45) { return "Jev is genuinely unsure \u2014 this is close to a coin flip."; }
+    if (probability > 0.35) { return "Jev leans slightly toward false."; }
+    if (probability > 0.15) { return "Jev thinks this is likely false."; }
+    return "Jev thinks this is very likely false.";
+  }
+
+  function buildBarRow(name, probability, options) {
+    var settings = options || {};
+    var row = el("div", "bar-row");
+
+    var labelRow = el("div", "bar-label");
+    var nameNode = el("span", "name", name);
+    if (settings.description) {
+      var nameWrap = el("span");
+      nameWrap.appendChild(nameNode);
+      nameWrap.appendChild(el("div", "opt-desc", settings.description));
+      labelRow.appendChild(nameWrap);
+    } else {
+      labelRow.appendChild(nameNode);
+    }
+    labelRow.appendChild(el("span", "pct", formatPercent(probability)));
+    row.appendChild(labelRow);
+
+    var track = el("div", "bar-track");
+    track.setAttribute("role", "img");
+    track.setAttribute("aria-label", name + ": " + formatPercent(probability));
+    var fill = el("div", "bar-fill" + (settings.winner ? " is-winner" : ""));
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    var targetWidth = (typeof probability === "number" && isFinite(probability) ? Math.max(0, Math.min(1, probability)) * 100 : 0) + "%";
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () { fill.style.width = targetWidth; });
+      });
+    } else {
+      fill.style.width = targetWidth;
+    }
+
+    return row;
+  }
+
+  function buildConfidenceNote(confidence, probabilityLabel) {
+    var note = el("p", "conf-note");
+    var likelihood = probabilityLabel || "each option";
+    if (typeof confidence === "number" && isFinite(confidence)) {
+      note.textContent = "Confidence " + formatPercent(confidence) +
+        " \u2014 confidence is how sure Jev is about this answer, while probability is how likely " + likelihood +
+        " is. They are different things.";
+    } else {
+      note.textContent = "Probability is how likely " + likelihood +
+        " is; confidence is how sure Jev is about this answer. They are different things.";
+    }
+    return note;
+  }
+
+  function buildCardShell(question, answer, typeLabel) {
+    var card = el("article", "card");
+
+    var head = el("div", "card-head");
+    var titleWrap = el("div");
+    titleWrap.appendChild(el("h3", "card-title", question && question.id ? question.id : "(unnamed question)"));
+    head.appendChild(titleWrap);
+    head.appendChild(el("span", "pill", typeLabel));
+    card.appendChild(head);
+
+    var instructions = question && question.instructions ? question.instructions : "";
+    card.appendChild(el("p", "card-sub", instructions));
+
+    return card;
+  }
+
+  function buildNoulCard(question, answer) {
+    var card = buildCardShell(question, answer, "noul");
+    var probability = answer.noul;
+    if (typeof probability !== "number" || !isFinite(probability)) {
+      card.appendChild(el("p", "empty", "Jev returned no usable noul value for this question."));
+      return card;
+    }
+    card.appendChild(el("div", "big-number", formatPercent(probability)));
+    card.appendChild(el("p", "verdict", noulVerdict(probability)));
+    card.appendChild(buildBarRow("Probability of yes", probability, {}));
+    card.appendChild(buildConfidenceNote(answer.confidence, "the answer being yes"));
+    return card;
+  }
+
+  function buildChoiceCard(question, answer) {
+    var card = buildCardShell(question, answer, "choice");
+    var probabilities = answer.probabilities && typeof answer.probabilities === "object" ? answer.probabilities : {};
+    var descriptions = {};
+    if (question && question.type === "choice" && Array.isArray(question.criteria)) {
+      question.criteria.forEach(function (option) {
+        if (option && option.name) { descriptions[option.name] = option.description; }
+      });
+    }
+
+    var winner = answer.choice;
+    if (winner === undefined || winner === null) {
+      var bestName = null;
+      var bestValue = -1;
+      Object.keys(probabilities).forEach(function (name) {
+        if (probabilities[name] > bestValue) { bestValue = probabilities[name]; bestName = name; }
+      });
+      winner = bestName;
+    }
+
+    if (winner === undefined || winner === null) {
+      card.appendChild(el("p", "empty", "Jev returned no choice for this question."));
+      return card;
+    }
+
+    var winnerBox = el("div", "winner");
+    winnerBox.appendChild(el("div", "k", "Chosen option"));
+    winnerBox.appendChild(el("div", "v", winner));
+    if (descriptions[winner]) {
+      winnerBox.appendChild(el("div", "opt-desc", descriptions[winner]));
+    }
+    card.appendChild(winnerBox);
+
+    var names = Object.keys(probabilities);
+    if (names.length === 0) {
+      card.appendChild(el("p", "empty", "No per-option probabilities were returned."));
+    } else {
+      names.forEach(function (name) {
+        card.appendChild(buildBarRow(name, probabilities[name], {
+          winner: name === winner,
+          description: descriptions[name]
+        }));
+      });
+    }
+
+    card.appendChild(buildConfidenceNote(answer.confidence, "the chosen option"));
+    return card;
+  }
+
+  function buildScoreCard(question, answer) {
+    var card = buildCardShell(question, answer, "score");
+    var score = answer.score;
+    var legend = answer.legend && typeof answer.legend === "object" ? answer.legend : {};
+    var probabilities = answer.probabilities && typeof answer.probabilities === "object" ? answer.probabilities : {};
+    var levelKeys = Object.keys(legend).length > 0 ? Object.keys(legend) : Object.keys(probabilities);
+    levelKeys.sort(function (left, right) {
+      var leftNumber = Number(left);
+      var rightNumber = Number(right);
+      if (isFinite(leftNumber) && isFinite(rightNumber)) { return leftNumber - rightNumber; }
+      return String(left).localeCompare(String(right));
+    });
+
+    if (typeof score !== "number" || !isFinite(score)) {
+      card.appendChild(el("p", "empty", "Jev returned no usable score for this question."));
+      return card;
+    }
+
+    card.appendChild(el("div", "big-number", formatScore(score)));
+
+    var closestKey = null;
+    if (levelKeys.length > 0) {
+      var closestDistance = Infinity;
+      levelKeys.forEach(function (key) {
+        var numericKey = Number(key);
+        if (!isFinite(numericKey)) { return; }
+        var distance = Math.abs(numericKey - score);
+        if (distance < closestDistance) { closestDistance = distance; closestKey = key; }
+      });
+      if (closestKey === null) {
+        var bestProbability = -1;
+        levelKeys.forEach(function (key) {
+          if (typeof probabilities[key] === "number" && probabilities[key] > bestProbability) {
+            bestProbability = probabilities[key];
+            closestKey = key;
+          }
+        });
+      }
+    }
+
+    var closestLabel = closestKey !== null && legend[closestKey] !== undefined ? legend[closestKey] : closestKey;
+    card.appendChild(el("p", "verdict", closestLabel === null ? "No level labels were returned." : "Closest level: " + closestLabel));
+
+    if (levelKeys.length === 0) {
+      card.appendChild(el("p", "empty", "No per-level probabilities were returned."));
+    } else {
+      levelKeys.forEach(function (key) {
+        var label = legend[key] !== undefined ? legend[key] : "Level " + key;
+        card.appendChild(buildBarRow(label, probabilities[key], { winner: key === closestKey }));
+      });
+    }
+
+    card.appendChild(buildConfidenceNote(answer.confidence, "each level"));
+    return card;
+  }
+
+  function renderSuccess(responseBody) {
+    setText(elements.modelName, responseBody.model || MODEL_DEFAULT);
+    var isMock = responseBody.mock === true;
+    elements.mockBadge.className = "badge " + (isMock ? "is-mock" : "is-live");
+    setText(elements.mockFlag, isMock ? "mocked response" : "live response");
+
+    var answers = responseBody.answers && typeof responseBody.answers === "object" ? responseBody.answers : {};
+    var cards = elements.answerCards;
+    clear(cards);
+
+    var answeredCount = 0;
+    state.questions.forEach(function (question) {
+      var instructions = String(question.instructions || "").trim();
+      if (instructions === "") { return; }
+      var id = String(question.id || "").trim();
+      var answer = answers[id];
+      if (answer) { answeredCount += 1; }
+
+      if (!answer) {
+        var missingCard = buildCardShell(question, null, question.type);
+        missingCard.appendChild(el("p", "empty", "Jev returned no answer for \"" + id + "\"."));
+        cards.appendChild(missingCard);
+        return;
+      }
+
+      var answerType = answer.type || question.type;
+      if (answerType === "noul") {
+        cards.appendChild(buildNoulCard(question, answer));
+      } else if (answerType === "choice") {
+        cards.appendChild(buildChoiceCard(question, answer));
+      } else if (answerType === "score") {
+        cards.appendChild(buildScoreCard(question, answer));
+      } else {
+        var unknownCard = buildCardShell(question, answer, String(answerType));
+        unknownCard.appendChild(el("p", "empty", "Unknown answer type \"" + String(answerType) + "\". Raw JSON is in the response panel."));
+        cards.appendChild(unknownCard);
+      }
+    });
+
+    var returnedCount = Object.keys(answers).length;
+    if (returnedCount === 0) {
+      setText(elements.resultsSummary, "Jev returned no answers for this request.");
+    } else if (answeredCount === returnedCount) {
+      setText(elements.resultsSummary, "All " + returnedCount + " answers rendered below.");
+    } else {
+      setText(elements.resultsSummary, "Rendered " + answeredCount + " of " + returnedCount + " returned answers.");
+    }
+    renderStats(responseBody);
+  }
+
+  function renderStats(responseBody) {
+    var strip = elements.statsStrip;
+    clear(strip);
+
+    var usage = responseBody.usage && typeof responseBody.usage === "object" ? responseBody.usage : {};
+    strip.appendChild(buildStat("Latency", typeof responseBody.latency_ms === "number" ? responseBody.latency_ms + " ms" : "\u2014"));
+    strip.appendChild(buildStat("Input tokens", formatNumber(usage.input_tokens)));
+    strip.appendChild(buildStat("Output tokens", formatNumber(usage.output_tokens)));
+    strip.appendChild(buildStat("Cost", formatCost(usage.cost)));
+  }
+
+  function buildStat(key, value) {
+    var box = el("div", "stat");
+    box.appendChild(el("div", "k", key));
+    box.appendChild(el("div", "v", value));
+    return box;
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  function bindEvents() {
+    elements.stateInput.addEventListener("input", function () { hide(elements.stateError); });
+    elements.jsonToggle.addEventListener("change", function () { hide(elements.stateError); });
+
+    elements.presetRow.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-preset]");
+      if (!button) { return; }
+      applyPreset(button.getAttribute("data-preset"));
+    });
+
+    elements.questionList.addEventListener("input", handleQuestionInput);
+    elements.questionList.addEventListener("change", function (event) {
+      if (event.target.classList && event.target.classList.contains("q-type")) {
+        handleQuestionTypeChange(event);
+        return;
+      }
+      handleQuestionInput(event);
+    });
+    elements.questionList.addEventListener("click", handleQuestionClick);
+
+    elements.addQuestionRow.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-add-type]");
+      if (!button) { return; }
+      addQuestion(button.getAttribute("data-add-type"));
+    });
+
+    elements.askButton.addEventListener("click", askJev);
+
+    document.addEventListener("keydown", function (event) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        askJev();
+      }
+    });
+  }
+
+  function collectElements() {
+    elements.stateInput = document.getElementById("state-input");
+    elements.jsonToggle = document.getElementById("json-state-toggle");
+    elements.stateError = document.getElementById("state-error");
+    elements.questionList = document.getElementById("question-list");
+    elements.questionsError = document.getElementById("questions-error");
+    elements.presetRow = document.querySelector(".presets");
+    elements.addQuestionRow = document.querySelector('[data-add-type="noul"]').parentNode;
+    elements.askButton = document.getElementById("ask-button");
+    elements.askButtonLabel = document.getElementById("ask-button-label");
+    elements.spinner = document.getElementById("spinner");
+    elements.errorPanel = document.getElementById("error-panel");
+    elements.resultsSummary = document.getElementById("results-summary");
+    elements.statsStrip = document.getElementById("stats-strip");
+    elements.answerCards = document.getElementById("answer-cards");
+    elements.requestJson = document.getElementById("request-json");
+    elements.responseJson = document.getElementById("response-json");
+    elements.modelBadge = document.getElementById("model-badge");
+    elements.modelName = document.getElementById("model-name");
+    elements.mockBadge = document.getElementById("mock-badge");
+    elements.mockFlag = document.getElementById("mock-flag");
+  }
+
+  function verifyElements() {
+    var missing = [];
+    Object.keys(elements).forEach(function (name) {
+      if (!elements[name]) { missing.push(name); }
+    });
+    if (missing.length > 0 && window.console) {
+      window.console.error("Jev Playground: missing DOM nodes: " + missing.join(", "));
+    }
+    return missing;
+  }
+
+  function loadServerInfo() {
+    fetch("/api/health")
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (info) {
+        if (!info) { return; }
+        if (info.model) { setText(elements.modelName, info.model); }
+        if (info.mock) {
+          setText(elements.mockFlag, "mock mode - no API key needed");
+          elements.mockBadge.className = "badge is-mock";
+        } else if (info.key_present) {
+          setText(elements.mockFlag, "ready - live answers from Jev");
+        }
+      })
+      .catch(function () {
+        setText(elements.mockFlag, "server info unavailable");
+      });
+  }
+
+  function init() {
+    collectElements();
+    verifyElements();
+
+    setText(elements.modelName, MODEL_DEFAULT);
+    setText(elements.mockFlag, "no response yet");
+    loadServerInfo();
+
+    applyPreset("ticket");
+
+    DEFAULT_QUESTIONS.forEach(function (presetQuestion) {
+      state.questions.push({
+        uid: state.uidCounter += 1,
+        id: presetQuestion.id,
+        type: presetQuestion.type,
+        instructions: presetQuestion.instructions,
+        criteria: JSON.parse(JSON.stringify(presetQuestion.criteria))
+      });
+    });
+    renderQuestionList();
+
+    bindEvents();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
