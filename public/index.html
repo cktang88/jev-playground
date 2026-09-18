@@ -89,6 +89,10 @@
 
   main { display: grid; gap: 18px; }
 
+  .input-grid { display: grid; gap: 18px; }
+
+  .input-grid > .panel { min-width: 0; }
+
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -126,7 +130,7 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
 
-  textarea { min-height: 210px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+  textarea { min-height: 170px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
 
   input[type="text"]:focus-visible,
   select:focus-visible,
@@ -181,10 +185,19 @@
     background: var(--panel-soft);
     border-radius: var(--radius-sm);
     padding: 14px;
-    margin-bottom: 12px;
+    margin-bottom: 0;
+    display: grid;
+    grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 18px;
+    align-items: start;
   }
 
-  .qcard-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  #question-list { display: grid; gap: 12px; margin-bottom: 12px; }
+
+  .qcard-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qcard-basic { min-width: 0; }
+  .qcard-basic .field:last-child { margin-bottom: 0; }
+  .qcard > .criteria { grid-column: 2; grid-row: 2; margin-top: 0; }
 
   .qnum {
     font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
@@ -240,10 +253,14 @@
 
   .inline-error { color: var(--danger); font-size: 12.5px; margin: 8px 0 0; }
 
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  #stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
 
   .stat {
-    flex: 1 1 130px;
     background: var(--panel-soft);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -259,7 +276,20 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 16px 18px 18px;
-    margin-bottom: 14px;
+    margin-bottom: 0;
+  }
+
+  #answer-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 14px;
+  }
+
+  .raw-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
   }
 
   .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -329,10 +359,22 @@
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
 
+  @media (max-width: 860px) {
+    .raw-grid {
+      grid-template-columns: 1fr;
+    }
+
+    #stats-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .qcard { grid-template-columns: 1fr; }
+    .qcard > .criteria { grid-column: 1; grid-row: auto; margin-top: 4px; }
+  }
+
   @media (max-width: 700px) {
     .opt-row { grid-template-columns: 1fr; }
     .grid-2 { grid-template-columns: 1fr; }
     .big-number { font-size: 34px; }
+    #stats-strip { grid-template-columns: 1fr; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -362,6 +404,7 @@
   </header>
 
   <main>
+    <div class="input-grid">
     <section class="panel" aria-labelledby="state-heading">
       <h2 id="state-heading">1 &middot; State</h2>
       <div class="row presets" role="group" aria-label="Sample states">
@@ -391,6 +434,7 @@
       </div>
       <p class="inline-error" id="questions-error" role="alert" aria-live="polite" hidden></p>
     </section>
+    </div>
 
     <div class="actions">
       <button type="button" class="primary" id="ask-button">
@@ -409,15 +453,17 @@
       <div id="answer-cards" aria-live="polite"></div>
     </section>
 
-    <details class="raw" id="request-details">
-      <summary>Request JSON &mdash; exactly what was sent</summary>
-      <div class="raw-body"><pre id="request-json">Nothing sent yet.</pre></div>
-    </details>
+    <div class="raw-grid">
+      <details class="raw" id="request-details">
+        <summary>Request JSON &mdash; exactly what was sent</summary>
+        <div class="raw-body"><pre id="request-json">Nothing sent yet.</pre></div>
+      </details>
 
-    <details class="raw" id="response-details">
-      <summary>Raw response &mdash; exactly what came back</summary>
-      <div class="raw-body"><pre id="response-json">Nothing received yet.</pre></div>
-    </details>
+      <details class="raw" id="response-details">
+        <summary>Raw response &mdash; exactly what came back</summary>
+        <div class="raw-body"><pre id="response-json">Nothing received yet.</pre></div>
+      </details>
+    </div>
   </main>
 </div>
 
@@ -660,8 +706,6 @@
     typeField.appendChild(typeSelect);
     grid.appendChild(typeField);
 
-    card.appendChild(grid);
-
     var instructionsField = el("label", "field");
     instructionsField.appendChild(el("span", "lbl", "Instructions"));
     var instructionsInput = el("input");
@@ -672,7 +716,11 @@
     instructionsInput.setAttribute("data-field", "instructions");
     instructionsInput.setAttribute("aria-label", "Question instructions");
     instructionsField.appendChild(instructionsInput);
-    card.appendChild(instructionsField);
+
+    var basicFields = el("div", "qcard-basic");
+    basicFields.appendChild(grid);
+    basicFields.appendChild(instructionsField);
+    card.appendChild(basicFields);
 
     var criteriaBox = el("fieldset", "criteria");
     criteriaBox.appendChild(el("legend", null, "Criteria"));
@@ -1042,6 +1090,7 @@
     }).then(function (result) {
       state.lastResponse = result.parsed !== null ? result.parsed : { ok: false, status: result.status, error: "Response was not JSON.", details: { body: result.text.slice(0, 2000) } };
       elements.responseJson.textContent = JSON.stringify(state.lastResponse, null, 2);
+      elements.responseDetails.open = true;
 
       if (result.parsed === null) {
         showRequestError({ ok: false, error: "The server returned a non-JSON response.", status: result.status, hint: "Check the server logs; the response body is in the raw response panel." });
@@ -1057,6 +1106,7 @@
     }).catch(function (networkError) {
       state.lastResponse = { ok: false, error: String(networkError && networkError.message ? networkError.message : networkError) };
       elements.responseJson.textContent = JSON.stringify(state.lastResponse, null, 2);
+      elements.responseDetails.open = true;
       showRequestError({ ok: false, error: "Could not reach /api/decide.", status: "network error", hint: "Is the server running on this origin? " + state.lastResponse.error });
       setText(elements.resultsSummary, "");
     }).then(function () {
@@ -1408,6 +1458,7 @@
     elements.answerCards = document.getElementById("answer-cards");
     elements.requestJson = document.getElementById("request-json");
     elements.responseJson = document.getElementById("response-json");
+    elements.responseDetails = document.getElementById("response-details");
     elements.modelBadge = document.getElementById("model-badge");
     elements.modelName = document.getElementById("model-name");
     elements.mockBadge = document.getElementById("mock-badge");
