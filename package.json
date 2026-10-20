@@ -1,0 +1,12 @@
+{
+  "name": "system-one-playground",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free playground for System One decision and extraction models on OpenRouter and Cloudflare Workers AI.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "mock": "PLAYGROUND_MOCK=1 node server.mjs",
+    "test": "node --test test/*.test.mjs && node smoke-test.mjs"
+  }
+}

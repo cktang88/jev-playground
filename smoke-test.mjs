@@ -44,7 +44,7 @@ async function post(path, body) {
 }
 
 const server = spawn(process.execPath, ["server.mjs"], {
-  env: { ...process.env, JEV_MOCK: "1", PORT: String(PORT) },
+  env: { ...process.env, PLAYGROUND_MOCK: "1", OPENROUTER_DISCOVER: "0", PORT: String(PORT) },
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -100,8 +100,19 @@ try {
   const page = await fetch(`${BASE}/`);
   const html = await page.text();
   check("index.html is served", page.status === 200, `status=${page.status}`);
-  check("page has the Ask Jev button", /Ask Jev/i.test(html));
+  check("page has the run button", /id="run-button"/.test(html));
   check("page loads no external scripts", !/<script[^>]+src=["']https?:/i.test(html));
+  const appJs = await fetch(`${BASE}/js/app.mjs`);
+  check("ES module app is served as JavaScript", appJs.status === 200 && /javascript/.test(appJs.headers.get("content-type") || ""));
+
+  console.log("\nGET /api/catalog");
+  const catalog = await (await fetch(`${BASE}/api/catalog`)).json();
+  check("catalog lists both tasks", Boolean(catalog.tasks?.decide && catalog.tasks?.extract));
+  check("catalog publishes extract field types", Object.keys(catalog.tasks?.extract?.types || {}).length === 9);
+  check("catalog lists both providers", ["openrouter", "cloudflare"].every((id) => catalog.providers?.some((p) => p.id === id)));
+  check("catalog includes Clairic", catalog.models?.some((m) => m.id === "cloudflare:@cf/cloudflare/clairic" && m.task === "extract"));
+  check("catalog includes GPT-6 Luna decisions", catalog.models?.some((m) => m.id === "openrouter:openai/gpt-6-luna-decisions"));
+  check("catalog does not leak keys", !JSON.stringify(catalog).includes("sk-or-"));
 
   console.log("\nPOST /api/decide (all three types)");
   const ok = await post("/api/decide", { state: sampleState, questions: threeQuestions });
@@ -131,6 +142,35 @@ try {
   });
   check("accepts object state", jsonState.status === 200, JSON.stringify(jsonState.json)?.slice(0, 200));
 
+  console.log("\nPOST /api/run (one request, several providers)");
+  for (const target of ["openrouter:typesafe/jev-1.14", "openrouter:openai/gpt-6-luna-decisions", "cloudflare:@cf/cloudflare/clef"]) {
+    const result = await post("/api/run", { task: "decide", target, state: sampleState, questions: threeQuestions });
+    check(`${target} -> 200`, result.status === 200, JSON.stringify(result.json)?.slice(0, 200));
+    check(`${target} -> echoes target`, result.json?.target === target);
+    check(`${target} -> shows upstream preview`, typeof result.json?.upstream?.url === "string");
+  }
+
+  console.log("\nPOST /api/extract (Clairic)");
+  const extract = await post("/api/extract", {
+    target: "cloudflare:@cf/cloudflare/clairic",
+    state: "Invoice INV-2291 from Northwind Supply, issued 2026-09-02, net 30. 4 pallets at $250.00 each.",
+    fields: {
+      invoice_number: { type: "text" },
+      total: { type: "number", decimals: 2, unit: "USD" },
+      contacts: { type: "list", items: "text" },
+      days_to_pay: { type: "estimate", min: 0, max: 120, step: 1 },
+      next: { type: "forecast", horizon: 3, interval: "day", min: 1, max: 100 },
+    },
+    options: { include_quantiles: true },
+  });
+  const fields = extract.json?.answers || {};
+  check("extract returns 200", extract.status === 200, JSON.stringify(extract.json)?.slice(0, 300));
+  check("text answer has span + p_null", Array.isArray(fields.invoice_number?.span) && typeof fields.invoice_number?.p_null === "number");
+  check("list answer has spans", Array.isArray(fields.contacts?.spans));
+  check("estimate inside [min, max]", fields.days_to_pay?.p10 >= 0 && fields.days_to_pay?.p90 <= 120);
+  check("estimate quantiles on request", fields.days_to_pay?.quantiles?.length === 99);
+  check("forecast has one value per step", fields.next?.value?.length === 3);
+
   console.log("\nValidation (expect 400)");
   const cases = [
     ["missing state", { questions: threeQuestions }],
@@ -140,6 +180,10 @@ try {
     ["bad type", { state: sampleState, questions: { q: { type: "chat", instructions: "hi" } } }],
     ["choice with one option", { state: sampleState, questions: { q: { type: "choice", instructions: "pick", criteria: { only: "x" } } } }],
     ["score with one level", { state: sampleState, questions: { q: { type: "score", instructions: "rate", criteria: ["only"] } } }],
+    ["missing instructions", { state: sampleState, questions: { q: { type: "noul" } } }],
+    ["box without image", { state: sampleState, questions: { q: { type: "box", instructions: "the mug" } } }],
+    ["extract model on decide", { target: "cloudflare:@cf/cloudflare/clairic", state: sampleState, questions: threeQuestions }],
+    ["unknown provider", { target: "nope:model", state: sampleState, questions: threeQuestions }],
   ];
   for (const [name, body] of cases) {
     const result = await post("/api/decide", body);
@@ -157,6 +201,8 @@ try {
     body: "{not json",
   });
   check("malformed JSON -> 400", badJson.status === 400, `status=${badJson.status}`);
+  const noRoute = await fetch(`${BASE}/api/nope`);
+  check("unknown API route -> 404 JSON", noRoute.status === 404 && (await noRoute.json()).ok === false);
 } catch (error) {
   failed += 1;
   console.log(`\n  ERROR  ${error.message}`);

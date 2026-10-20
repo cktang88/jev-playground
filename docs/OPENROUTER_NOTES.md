@@ -1,5 +1,52 @@
-# API notes — calling Jev through OpenRouter (evidence)
-Public docs/API only, fetched 2026-09-18. No authenticated calls were made.
+# OpenRouter decisions notes — calling System One models through OpenRouter (evidence)
+Public docs/API only. Sections 1–7 were fetched 2026-09-18; the 2026-10-20 update below supersedes
+them where they disagree. No authenticated calls were made.
+
+## Update 2026-10-20 — many models, a fourth question type, images
+
+**The decisions router is multi-model now.** `GET https://openrouter.ai/api/v1/models?output_modalities=decisions`
+(public, no key) lists every model whose modality is `…->decisions`. On 2026-10-20 it returned 27, including:
+
+| id | input $/M tok | context | modality |
+| --- | --- | --- | --- |
+| `typesafe/jev-1.14` (endpoint `typesafe/jev-1.14-20261014`) | 0.042 | 262,144 | text+image |
+| `typesafe/jev-1.13` | 0.042 | 262,144 | text+image |
+| `~typesafe/jev-latest` (alias, `endpoints: []`) | 0.042 | 262,144 | text+image |
+| `openai/gpt-6-luna-decisions` | 0.10 | 1,050,000 | text+image |
+| `cloudflare/clef` / `clef-flash` / `clef-omni` | 0.24 / 0.038 / 0.15 | 65,537 / 24,576 / 65,536 | omni = +audio+video |
+| `perplexity/pplx-decider-v1.2`, `…-flash-v1.2` | 0.02 / 0.01 | 262,144 | text+image |
+| `liquid/d1`, `liquid/d1-ultra`, `inception/mercury-decide(:free)`, `upstage/solar-decide(-flash)`, `microsoft/microsoft-decision-1`, `nace-ai/drex-v1.5/2.0`, `respan/span-01/02`, `scaledown/classify-1`, `togethercomputer/tev1-4b-experimental`, `jaredpalmer/kev-4b` | 0–0.06 | various | |
+
+The playground discovers this list at startup (cached 10 min; `OPENROUTER_DISCOVER=0` disables) and
+overlays curated facts that the models API does not expose (supported question types, notes).
+`pricing.prompt` is **per token**: `0.000000042` = **$0.042 per million** (the 2026-09-18 TL;DR below
+said "$42/Mtok" — that was off by 1000×). `pricing.completion` is 0; decisions bill input only.
+
+**Default model is now `typesafe/jev-1.14`** (live endpoint since 2026-10-14). `typesafe/jev-1.13` still works.
+
+**Fourth question type: `box`** (OpenAPI `DecisionsBoxQuestion` / `DecisionsBoxAnswer`):
+```yaml
+DecisionsBoxQuestion: required: [type, instructions]   # no criteria
+DecisionsBoxAnswer:   required: [type, box]
+  properties: {box: {top, bottom, left, right: number}, confidence: number}
+```
+Edges are fractions of the image width/height from the top-left (https://docs.typesafe.ai/primitives/box.md).
+A box is always returned — there is no "not found"; pair it with a noul. TypeSafe documents Box as Jev 1.14 only,
+so the catalog only enables `box` on Jev 1.14 / jev-latest (other models: send a custom id to try).
+
+**Images.** OpenRouter's `DecisionsRequest` schema defines **no** image field. TypeSafe's own API
+(https://docs.typesafe.ai/images.md) takes a top-level `assets` map —
+`{ "<ref>": { "type": "image", "format": "png"|"jpg", "data_base64": "…" } }` — and the reference string is
+written wherever the image belongs (state, instructions, criteria), plus the header
+`TypeSafe-Danger-Zone-Images: true`. The playground sends exactly that through OpenRouter, placing references
+in the state (`{ text, image_1: "<ref>" }` for string state). Whether OpenRouter forwards `assets` and the header
+is **UNCONFIRMED**; models list `text+image` input. PNG/JPEG only (no WebP) in TypeSafe's format.
+
+**Optional request fields** the playground passes through from `options`: `session_id` (≤ 256 chars) and
+`provider` (routing preferences: `order`, `only`, `ignore`, `allow_fallbacks`, `sort`, `max_price`, `zdr`, …).
+Also `trace` and `user` exist (not exposed).
+
+---
 
 ## TL;DR for the demo
 **Send `"model": "typesafe/jev-1.13"`.**
