@@ -38,6 +38,31 @@ export function makeItem(taskSpec, source) {
   };
 }
 
+function criteriaFits(spec, criteria) {
+  switch (spec?.criteria?.kind) {
+    case "pair": return criteria !== null && typeof criteria === "object" && typeof criteria.true === "string" && typeof criteria.false === "string";
+    case "map": return Array.isArray(criteria) && criteria.every((row) => row && typeof row.key === "string" && typeof row.value === "string");
+    case "list": return Array.isArray(criteria) && criteria.every((level) => typeof level === "string");
+    default: return true;
+  }
+}
+
+// Rebuilds an item saved in the editor shape (e.g. from localStorage). Anything
+// that no longer fits its type's spec falls back to empty values instead of crashing.
+export function reviveItem(taskSpec, saved) {
+  if (!saved || typeof saved !== "object" || !Object.hasOwn(taskSpec.types, saved.type)) return null;
+  const spec = taskSpec.types[saved.type];
+  const params = saved.params && typeof saved.params === "object" && !Array.isArray(saved.params) ? saved.params : {};
+  return {
+    uid: uid(),
+    id: typeof saved.id === "string" ? saved.id : "",
+    type: saved.type,
+    instructions: typeof saved.instructions === "string" ? saved.instructions : "",
+    criteria: criteriaFits(spec, saved.criteria) ? saved.criteria : emptyCriteria(spec),
+    params: Object.fromEntries(Object.entries(params).filter(([, value]) => typeof value === "string" || typeof value === "boolean")),
+  };
+}
+
 export function nextId(items, type) {
   const taken = new Set(items.map((item) => item.id));
   let index = 1;
@@ -50,7 +75,10 @@ function parseParam(param, raw) {
   if (raw === undefined || raw === null || String(raw).trim() === "") return undefined;
   const text = String(raw).trim();
   switch (param.kind) {
-    case "int":
+    case "int": {
+      const value = Number(text);
+      return Number.isInteger(value) ? value : { error: `${param.label} must be a whole number.` };
+    }
     case "number": {
       const value = Number(text);
       return Number.isFinite(value) ? value : { error: `${param.label} must be a number.` };
@@ -58,7 +86,7 @@ function parseParam(param, raw) {
     case "number_or_date":
       return /^\d{4}-\d{2}-\d{2}/.test(text) ? text : Number.isFinite(Number(text)) ? Number(text) : { error: `${param.label} must be a number or YYYY-MM-DD.` };
     case "step":
-      return text === "month" || text === "year" ? text : Number.isFinite(Number(text)) ? Number(text) : { error: `${param.label} must be a number, month, or year.` };
+      return text === "month" || text === "year" ? text : Number(text) > 0 && Number.isFinite(Number(text)) ? Number(text) : { error: `${param.label} must be a positive number, month, or year.` };
     default:
       return text;
   }
@@ -88,6 +116,9 @@ export function toApiItems(items, taskSpec) {
         else if (t || f) errors.push(`${label}: fill both "yes" and "no" descriptions, or neither.`);
       } else if (kind === "map") {
         const rows = item.criteria.filter((row) => row.key.trim());
+        const keys = rows.map((row) => row.key.trim());
+        const duplicate = keys.find((key, position) => keys.indexOf(key) !== position);
+        if (duplicate) errors.push(`${label}: option "${duplicate}" is listed twice.`);
         if (rows.length < (spec.criteria.min || 0)) errors.push(`${label}: needs at least ${spec.criteria.min} options.`);
         api.criteria = Object.fromEntries(rows.map((row) => [row.key.trim(), row.value.trim() || null]));
       } else if (kind === "list") {
@@ -215,16 +246,37 @@ function itemCard(item, index, taskSpec, onChange, onRemove) {
   );
 }
 
+// Structural edits rebuild the list, so remember which control had focus (by card uid
+// and the control's position in the card) and put focus back afterwards.
+function focusMarker(container) {
+  const active = document.activeElement;
+  const card = active && container.contains(active) ? active.closest("[data-uid]") : null;
+  return card ? { uid: card.dataset.uid, index: active.dataset.focus } : null;
+}
+
+function restoreFocus(container, marker) {
+  if (!marker) return;
+  const card = [...container.querySelectorAll("[data-uid]")].find((node) => node.dataset.uid === marker.uid);
+  if (!card) return;
+  const controls = [...card.querySelectorAll("[data-focus]")];
+  const target = controls.find((node) => node.dataset.focus === marker.index) || controls[Math.min(Number(marker.index) || 0, controls.length - 1)];
+  target?.focus();
+}
+
 export function renderItems(container, items, taskSpec, onChange) {
+  const marker = focusMarker(container);
   clear(container);
   container.id = "question-list";
   items.forEach((item, index) => {
-    container.append(itemCard(item, index, taskSpec, onChange, () => {
+    const card = itemCard(item, index, taskSpec, onChange, () => {
       items.splice(index, 1);
       onChange(true);
-    }));
+    });
+    card.querySelectorAll("input, select, textarea, button").forEach((control, position) => { control.dataset.focus = String(position); });
+    container.append(card);
   });
   if (items.length === 0) container.append(h("p", { class: "empty", text: `No ${taskSpec.itemNoun}s yet — add one below.` }));
+  restoreFocus(container, marker);
 }
 
 export function renderAddButtons(container, taskSpec, onAdd) {

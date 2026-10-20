@@ -1,6 +1,6 @@
 import * as api from "./api.mjs";
-import { $, clear, h, uid } from "./dom.mjs";
-import { blankItem, makeItem, renderAddButtons, renderItems, toApiItems } from "./editors.mjs";
+import { $, clear, h } from "./dom.mjs";
+import { blankItem, makeItem, renderAddButtons, renderItems, reviveItem, toApiItems } from "./editors.mjs";
 import { customDescriptor, renderModelPicker } from "./models.mjs";
 import { DECIDE_DEFAULT_ITEMS, DECIDE_PRESETS, EXTRACT_PRESETS } from "./presets.mjs";
 import { renderRaw, renderResults } from "./results.mjs";
@@ -8,6 +8,8 @@ import * as store from "./store.mjs";
 
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_TOTAL_IMAGE_BYTES = 8 * 1024 * 1024;
+const IMAGE_TYPES = /^image\/(png|jpe?g|webp)$/;
 const PRESETS = { decide: DECIDE_PRESETS, extract: EXTRACT_PRESETS };
 
 const state = {
@@ -52,26 +54,43 @@ function persist() {
   }, 250);
 }
 
-function restore() {
-  const saved = store.load() || {};
+const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+
+// Saved state is untrusted: an older version, a type the server since changed, or a
+// hand-edited value. Every piece is checked, and anything unusable falls back to defaults.
+function restoreFrom(saved) {
   const tasks = Object.keys(state.catalog.tasks);
   state.task = tasks.includes(saved.task) ? saved.task : "decide";
-  state.custom = Array.isArray(saved.custom) ? saved.custom.filter((row) => tasks.includes(row.task)) : [];
-  const known = new Set(allModels().map((model) => model.id));
+  state.custom = Array.isArray(saved.custom)
+    ? saved.custom.filter((row) => isObject(row) && tasks.includes(row.task) && typeof row.id === "string" && typeof row.model === "string" && Array.isArray(row.types))
+    : [];
   for (const task of tasks) {
-    state.options[task] = saved.options?.[task] || {};
-    const remembered = (saved.selected?.[task] || []).filter((id) => known.has(id));
+    const known = new Set(allModels().filter((model) => model.task === task).map((model) => model.id));
+    state.options[task] = isObject(saved.options?.[task]) ? saved.options[task] : {};
+    const remembered = Array.isArray(saved.selected?.[task]) ? saved.selected[task].filter((id) => known.has(id)) : [];
     state.selected[task] = new Set(remembered.length ? remembered : [state.catalog.defaults[task]].filter(Boolean));
     const spec = taskSpec(task);
-    const items = Array.isArray(saved.items?.[task]) ? saved.items[task].filter((item) => spec.types[item.type]) : null;
-    if (items && items.length) {
-      state.items[task] = items.map((item) => ({ ...item, uid: uid() }));
-      state.states[task] = saved.states?.[task] || { text: "", json: false };
+    const savedState = saved.states?.[task];
+    if (Array.isArray(saved.items?.[task]) && isObject(savedState) && typeof savedState.text === "string") {
+      // An empty list is a valid choice (the user removed everything), not a reason to reset.
+      state.items[task] = saved.items[task].map((item) => reviveItem(spec, item)).filter(Boolean);
+      state.states[task] = { text: savedState.text, json: Boolean(savedState.json) };
     } else {
       applyPreset(task, PRESETS[task][0], { withItems: true });
     }
   }
   state.mock = Boolean(saved.mock);
+}
+
+function restore() {
+  const saved = store.load();
+  try {
+    restoreFrom(isObject(saved) ? saved : {});
+  } catch (failure) {
+    console.warn("Ignoring unreadable saved playground state:", failure);
+    store.clear();
+    restoreFrom({});
+  }
 }
 
 function applyPreset(task, preset, { withItems = false } = {}) {
@@ -114,7 +133,7 @@ function renderModels() {
       const set = state.selected[state.task];
       if (set.has(id)) set.delete(id);
       else set.add(id);
-      renderModels();
+      renderSelectionLine();
       renderRunLabel();
       persist();
     },
@@ -126,10 +145,19 @@ function renderModels() {
       persist();
     },
   });
+  renderSelectionLine();
+}
+
+// Rebuilt only when the task changes, so filtering or ticking models keeps the chosen provider.
+function renderCustomProviders() {
+  const previous = el.customProvider.value;
   clear(el.customProvider);
   for (const provider of state.catalog.providers.filter((entry) => entry.tasks.includes(state.task))) {
-    el.customProvider.append(h("option", { value: provider.id, text: provider.label }));
+    el.customProvider.append(h("option", { value: provider.id, text: provider.label, selected: provider.id === previous }));
   }
+}
+
+function renderSelectionLine() {
   const count = state.selected[state.task].size;
   el.selectionLine.textContent = count === 0
     ? "Select at least one model."
@@ -151,7 +179,7 @@ function renderPresets() {
 
 function renderStateBox() {
   const current = state.states[state.task];
-  el.stateInput.value = current.text;
+  el.stateInput.value = current.text ?? "";
   el.jsonToggle.checked = current.json;
   el.stateError.hidden = true;
 }
@@ -213,6 +241,7 @@ function renderAll() {
   el.mockToggle.checked = state.mock || state.catalog.mock;
   el.mockToggle.disabled = state.catalog.mock;
   renderModels();
+  renderCustomProviders();
   renderPresets();
   renderStateBox();
   renderTaskOptions();
@@ -230,22 +259,41 @@ function switchTask(task) {
 
 // ---- images -----------------------------------------------------------------------
 
+// Limits are checked synchronously against loaded *and* still-loading images, so
+// picking many files at once can't slip past them while FileReader runs.
+const pendingImages = { count: 0, bytes: 0 };
+
 function addFiles(files) {
+  const problems = [];
   for (const file of files) {
-    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) continue;
-    if (state.images.length >= MAX_IMAGES) return showError({ error: `At most ${MAX_IMAGES} images.`, hint: "Remove one first." });
-    if (file.size > MAX_IMAGE_BYTES) {
-      showError({ error: `${file.name} is larger than 4 MiB.`, hint: "Downscale it before attaching." });
-      continue;
+    const count = state.images.length + pendingImages.count;
+    const bytes = state.images.reduce((sum, image) => sum + image.bytes, 0) + pendingImages.bytes;
+    if (!IMAGE_TYPES.test(file.type)) {
+      problems.push(`${file.name || "pasted image"} is ${file.type || "an unknown type"}; use PNG, JPEG or WebP.`);
+    } else if (count >= MAX_IMAGES) {
+      problems.push(`Skipped ${file.name}: at most ${MAX_IMAGES} images.`);
+    } else if (file.size > MAX_IMAGE_BYTES) {
+      problems.push(`${file.name} is larger than 4 MiB.`);
+    } else if (bytes + file.size > MAX_TOTAL_IMAGE_BYTES) {
+      problems.push(`Skipped ${file.name}: images would exceed 8 MiB in total.`);
+    } else {
+      pendingImages.count += 1;
+      pendingImages.bytes += file.size;
+      const reader = new FileReader();
+      const settle = () => { pendingImages.count -= 1; pendingImages.bytes -= file.size; };
+      reader.onload = () => {
+        settle();
+        state.images.push({ name: file.name || "pasted image", bytes: file.size, dataUrl: reader.result });
+        renderImages();
+      };
+      reader.onerror = () => {
+        settle();
+        showError({ error: `Could not read ${file.name}.` });
+      };
+      reader.readAsDataURL(file);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (state.images.length >= MAX_IMAGES) return;
-      state.images.push({ name: file.name, bytes: file.size, dataUrl: reader.result });
-      renderImages();
-    };
-    reader.readAsDataURL(file);
   }
+  if (problems.length) showError({ error: problems.join(" "), hint: "Downscale or remove images to fit: 4 images, 4 MiB each, 8 MiB total." });
 }
 
 // ---- running ----------------------------------------------------------------------
@@ -365,7 +413,8 @@ function bind() {
     const model = el.customModel.value.trim();
     if (!model) return;
     const descriptor = customDescriptor({ provider: el.customProvider.value, model, task: state.task, types: Object.keys(taskSpec().types) });
-    if (!allModels().some((row) => row.id === descriptor.id)) state.custom.push(descriptor);
+    // Cloudflare serves both tasks, so the same id can exist once per task.
+    if (!allModels().some((row) => row.id === descriptor.id && row.task === state.task)) state.custom.push(descriptor);
     state.selected[state.task].add(descriptor.id);
     el.customModel.value = "";
     renderModels();

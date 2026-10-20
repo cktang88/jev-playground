@@ -68,12 +68,14 @@ function renderNoul(answer, { item }) {
 }
 
 function renderChoice(answer, { item }) {
-  const probabilities = answer.probabilities || { [answer.choice]: 1 };
   const descriptions = item?.criteria || {};
-  const rows = Object.entries(probabilities).sort((a, b) => b[1] - a[1]);
+  // Probabilities are optional on some providers: show the winner alone rather than inventing 100%.
+  const rows = answer.probabilities ? Object.entries(answer.probabilities).sort((a, b) => b[1] - a[1]) : [];
   return h("div", null,
     h("div", { class: "winner" }, h("div", { class: "k", text: "Choice" }), h("div", { class: "v", text: answer.choice })),
-    rows.map(([name, p]) => bar(name, p, { winner: name === answer.choice, desc: guidanceText(descriptions[name]) || undefined })),
+    rows.length
+      ? rows.map(([name, p]) => bar(name, p, { winner: name === answer.choice, desc: guidanceText(descriptions[name]) || undefined }))
+      : h("p", { class: "small", text: "This model returned no per-option probabilities." }),
     confidenceNote(answer.confidence),
   );
 }

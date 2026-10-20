@@ -46,7 +46,11 @@ export function renderModelPicker(container, { models, providers, task, selected
       const extraTypes = model.types.filter((type) => !["noul", "choice", "score"].includes(type) && task === "decide");
       group.append(
         h("label", { class: `model-row${isSelected ? " is-selected" : ""}` },
-          h("input", { type: "checkbox", checked: isSelected, onchange: () => onToggle(model.id) }),
+          h("input", { type: "checkbox", checked: isSelected, onchange: (event) => {
+            // Update in place (no re-render) so keyboard focus stays on this checkbox.
+            event.target.closest(".model-row").classList.toggle("is-selected", event.target.checked);
+            onToggle(model.id);
+          } }),
           h("div", null,
             h("div", { class: "name", text: model.label }),
             h("div", { class: "mid", text: model.model }),

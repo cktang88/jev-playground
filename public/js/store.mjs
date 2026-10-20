@@ -19,3 +19,11 @@ export function save(snapshot) {
     // Storage full or disabled: the editor still works, it just won't be remembered.
   }
 }
+
+export function clear() {
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch {
+    // Nothing to clear if storage is unavailable.
+  }
+}
