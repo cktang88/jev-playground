@@ -48,13 +48,14 @@ Also `trace` and `user` exist (not exposed).
 
 ---
 
-## TL;DR for the demo
-**Send `"model": "typesafe/jev-1.13"`.**
+## TL;DR for the demo (historical, 2026-09-18; see the update above)
+**Back then: send `"model": "typesafe/jev-1.13"`.** Now the playground defaults to `typesafe/jev-1.14`,
+`~typesafe/jev-latest` is listed (as an alias that may 404), and jev-1.13's live `context_length` is 262,144.
 
 - `typesafe/jev-latest` → **404** (verified on the live models API). Do not use it.
 - `~typesafe/jev-latest` → resolves, but `"endpoints":[]` — a metadata row with nothing to route to.
 - `typesafe/jev-1.13` → real endpoint `typesafe/jev-1.13-20260917`, `context_length: 32000`,
-  `pricing.prompt: 0.000000042` ($42/Mtok), `pricing.completion: 0`.
+  `pricing.prompt: 0.000000042` ($0.042/Mtok), `pricing.completion: 0`.
 - Every OpenRouter SDK example for this endpoint literally uses `typesafe/jev-1.13`.
 
 The 3 things most likely to break:
@@ -186,8 +187,9 @@ must be a string, JSON object, or array of text values."
 
 ## Extra: endpoint path and request shape (verified)
 - `POST https://openrouter.ai/api/alpha/decisions` exists (unauthenticated → `401 {"error":{"message":
-  "No cookie auth credentials found","code":401}}`); `POST /api/v1/alpha/decisions` → `404`. The OpenAPI
-  `servers` block says `https://openrouter.ai/api/v1`, but the real route omits `/v1`.
+  "No cookie auth credentials found","code":401}}`); `POST /api/v1/alpha/decisions` → `404`. The spec's
+  global `servers` block is `https://openrouter.ai/api/v1`, but the decisions operation overrides it with
+  `servers: [{url: https://openrouter.ai}]`, so spec and real route agree: no `/v1`.
 - Required request fields: `model`, `state`, `questions`; optional: `provider`, `session_id`, `trace`, `user`.
 - `DecisionsScoreQuestion.criteria` has `minItems: 1`; TypeSafe docs use >= 2 ordered levels.
 - `DecisionsNoulQuestion` requires `type` + `instructions`; when `criteria` is present it requires

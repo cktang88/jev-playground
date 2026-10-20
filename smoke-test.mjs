@@ -201,6 +201,14 @@ try {
     body: "{not json",
   });
   check("malformed JSON -> 400", badJson.status === 400, `status=${badJson.status}`);
+  const crossSite = await fetch(`${BASE}/api/run`, { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://evil.example" }, body: "{}" });
+  check("cross-origin API call -> 403", crossSite.status === 403, `status=${crossSite.status}`);
+  const plainText = await fetch(`${BASE}/api/run`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "{}" });
+  check("non-JSON content type -> 415", plainText.status === 415, `status=${plainText.status}`);
+  const badPath = await fetch(`${BASE}/%E0%A4%A`);
+  check("malformed percent-encoding -> 404", badPath.status === 404, `status=${badPath.status}`);
+  const big = await fetch(`${BASE}/api/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "x".repeat(17 * 1024 * 1024) }).catch((error) => ({ status: `error ${error.message}` }));
+  check("oversized body -> 413 envelope", big.status === 413, `status=${big.status}`);
   const noRoute = await fetch(`${BASE}/api/nope`);
   check("unknown API route -> 404 JSON", noRoute.status === 404 && (await noRoute.json()).ok === false);
 } catch (error) {

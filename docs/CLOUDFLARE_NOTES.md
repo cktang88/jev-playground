@@ -4,7 +4,7 @@ These notes come from public docs, fetched 2026-10-20. No authenticated calls we
 anything that needs a live call is marked **UNCONFIRMED**.
 
 Sources:
-- Blog, "Clairic: System One extraction model": https://blog.cloudflare.com/clairic-extraction-model
+- Blog, "Introducing Clairic, a new System One class of extraction models": https://blog.cloudflare.com/clairic-extraction-model
 - Clairic model page: https://developers.cloudflare.com/workers-ai/models/clairic/
   (raw schemas: `…/clairic/schema-input.json`, `…/clairic/schema-output.json`)
 - Clef: https://developers.cloudflare.com/workers-ai/models/clef/ · Clef Flash: `…/models/clef-flash/`
@@ -16,7 +16,7 @@ Sources:
 | Model | Task | Body `model` | Price | Context | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `@cf/cloudflare/clairic` | extract | `"clairic"` | $0.10 / M input | 65,536 | preview; vision; open weights "soon" |
-| `@cf/cloudflare/clef` | decide | `"clef"` | $0.24 / M input | 65,536 | open-weights 27B; vision |
+| `@cf/cloudflare/clef` | decide | `"clef"` | $0.24 / M input | 65,536 | 27B, weights on Hugging Face (`Cloudflare/clef`; OpenRouter calls it "open-source"); vision |
 | `@cf/cloudflare/clef-flash` | decide | `"clef-flash"` | $0.038 / M input | 24,576 | 9B; vision |
 
 System One models bill input tokens only: no output tokens, images tokenized as input.
@@ -119,11 +119,14 @@ Guidance from the blog:
 
 The request is the same System One decision schema as Jev (`model`, `state`, `questions`),
 plus a Cloudflare extension `images` (same format as Clairic; 4 MiB and 16 MP each, 8 MiB
-total, body ≤ 13 MiB). Model-specific limits, which the adapter enforces before calling:
+total, body ≤ 13 MiB). The adapter enforces these model-specific limits before calling:
 
 - 1–64 questions per request; ids use letters, digits, `_ . -`, up to 100 characters
 - `choice`: 2–255 options. `score`: 2–10 levels.
 - `noul`, `choice`, `score` only (no `box`)
+
+It does **not** check the 16 MP per-image cap or Clef's 13 MiB body cap, because the server
+accepts bodies up to 16 MiB, Clairic's limit. Cloudflare rejects those itself.
 - `state`: string, object, or array; long text state is truncated to fit
 
 Response: `{ model, answers, usage: { input_tokens, output_tokens } }`. Here `choice`

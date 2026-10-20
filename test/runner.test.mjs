@@ -154,7 +154,11 @@ test("extract validation catches bad field specs", async () => {
     [{ a: { type: "estimate", min: 0, max: 5, scale: "log" } }, /log scale/],
     [{ a: { type: "forecast", horizon: 99, min: 1, max: 2 } }, /at most 64/],
     [{ a: { type: "number", decimals: 9 } }, /at most 6/],
-    [{ a: { type: "text", bogus: 1 } }, /unknown parameter/],
+    [{ a: { type: "text", bogus: 1 } }, /does not take a "bogus"/],
+    [{ a: { type: "text", horizon: 5 } }, /does not take a "horizon"/],
+    [{ a: { type: "estimate", min: 1, max: 2, step: Infinity } }, /positive number/],
+    [{ a: { type: "estimate", min: "2026-13-45", max: "2026-99-99" } }, /number or an ISO date/],
+    [{ a: { type: "constructor" } }, /invalid type/],
   ];
   for (const [fields, pattern] of cases) {
     const { status, payload } = await run({ task: "extract", target: "cloudflare:@cf/cloudflare/clairic", state: "x", fields });
@@ -183,4 +187,60 @@ test("catalog: live discovery merges with curated rows and survives failure", as
   const fallback = await broken.load();
   assert.match(fallback.warnings[0], /offline/);
   assert.ok(fallback.models.some((row) => row.id === "cloudflare:@cf/cloudflare/clairic"));
+});
+
+test("hardening: inherited names, unsafe model ids, and Clef ids are 400s", async () => {
+  const { run, calls } = setup();
+  const proto = await run({ task: "constructor", state: "x", questions: QUESTIONS });
+  assert.equal(proto.status, 400);
+  const protoProvider = await run({ target: "__proto__:x", state: "x", questions: QUESTIONS });
+  assert.equal(protoProvider.status, 400);
+  const traversal = await run({ target: "cloudflare:../../../../user/tokens?x=", state: "x", questions: QUESTIONS });
+  assert.equal(traversal.status, 400);
+  assert.match(traversal.payload.error, /Invalid model id/);
+  const clefId = await run({ target: "cloudflare:@cf/cloudflare/clef", state: "x", questions: { "a b/?#": QUESTIONS.urgent } });
+  assert.equal(clefId.status, 400);
+  assert.match(clefId.payload.error, /ids/);
+  const badDate = await run({ task: "extract", target: "cloudflare:@cf/cloudflare/clairic", state: "x", fields: { a: { type: "text" } }, options: { reference_date: "2026-02-30" } });
+  assert.equal(badDate.status, 400);
+  assert.equal(calls.length, 0);
+});
+
+test("a body that stalls past the timeout is a 504, not a 500", async () => {
+  const config = loadConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_DISCOVER: "0", UPSTREAM_TIMEOUT_MS: "50" });
+  const fetchImpl = async (url, init) => ({
+    status: 200,
+    text: () => new Promise((resolve, reject) => init.signal.addEventListener("abort", () => reject(init.signal.reason))),
+  });
+  const run = createRunner({ config, catalog: createCatalog(config), fetchImpl });
+  // AbortSignal.timeout does not keep the event loop alive on its own; a real server would.
+  const keepAlive = setTimeout(() => {}, 2_000);
+  const { status } = await run({ target: "openrouter:typesafe/jev-1.14", state: "x", questions: QUESTIONS });
+  clearTimeout(keepAlive);
+  assert.equal(status, 504);
+});
+
+test("mock answers stay in contract: probabilities and stepped estimates", async () => {
+  const { run } = setup({ PLAYGROUND_MOCK: "1" });
+  const criteria = Object.fromEntries(Array.from({ length: 255 }, (_, index) => [`o${index}`, null]));
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const { payload } = await run({ target: "cloudflare:@cf/cloudflare/clef", state: "x", questions: { c: { type: "choice", instructions: "pick", criteria } } });
+    const values = Object.values(payload.answers.c.probabilities);
+    assert.ok(values.every((value) => value >= 0), "no negative probabilities");
+    assert.ok(Math.abs(values.reduce((sum, value) => sum + value, 0) - 1) < 1e-6);
+  }
+  const fields = {
+    stepped: { type: "estimate", min: 1, max: 2, step: 5 },
+    monthly: { type: "estimate", min: "2026-01-15", max: "2026-12-31", step: "month" },
+  };
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const { payload } = await run({ task: "extract", target: "cloudflare:@cf/cloudflare/clairic", state: "x", fields });
+    const stepped = payload.answers.stepped;
+    for (const key of ["value", "median", "p10", "p90"]) assert.ok(stepped[key] >= 1 && stepped[key] <= 2, `${key}=${stepped[key]}`);
+    const monthly = payload.answers.monthly;
+    for (const key of ["median", "p10", "p90"]) {
+      assert.ok(monthly[key] >= "2026-01-15" && monthly[key] <= "2026-12-31", `${key}=${monthly[key]}`);
+      assert.ok(monthly[key] === "2026-01-15" || monthly[key].endsWith("-01"), `${key}=${monthly[key]} aligned to a month`);
+    }
+  }
 });

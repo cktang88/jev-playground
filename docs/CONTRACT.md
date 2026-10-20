@@ -81,8 +81,8 @@ This is the single source of truth for the HTTP interface between the browser an
 ```
 
 `POST /api/decide` and `POST /api/extract` are the same endpoint with `task` preset. A v1
-body (`{ state, questions, model? }`) sent to `/api/decide` still works and routes to
-OpenRouter.
+body (`{ state, questions, model? }`) sent to `/api/decide` still works and goes to the default
+decide target (`DEFAULT_DECIDE_TARGET`, OpenRouter unless you change it).
 
 **Question** (decide):
 
@@ -97,7 +97,14 @@ OpenRouter.
 **Field** (extract): `{ "type": …, "instructions"?: string, …params }`. Field names must match
 `^[A-Za-z_][A-Za-z0-9_.-]{0,63}$`. Parameters per type are listed in the README table.
 `estimate` and `forecast` require `min` < `max`: both numbers, or (`estimate` only) both
-ISO dates. A `log` scale needs `min > 0`. Unknown parameters are rejected.
+ISO dates (real calendar dates, `YYYY-MM-DD`). A `log` scale needs `min > 0`. Each type
+accepts only `type`, `instructions` and its own parameters. Any other key is rejected, even
+if another type uses it.
+
+**Images.** Workers AI receives them as data URLs (`images`), which is its documented
+format. OpenRouter receives TypeSafe's `assets` map, with references placed in the state.
+OpenRouter's decisions schema has no image field, so whether it forwards images is
+**unconfirmed** (see OPENROUTER_NOTES.md).
 
 **Options:**
 
@@ -146,9 +153,14 @@ ISO dates. A `log` scale needs `min > 0`. Unknown parameters are rejected.
 
 | Status | When |
 | --- | --- |
-| 400 | invalid body, unknown task/provider, a model that cannot do what was asked (wrong task, unsupported type, too many items/levels/images, WebP on OpenRouter) |
+| 400 | invalid body, unknown task/provider, invalid model id, a model that cannot do what was asked (wrong task, unsupported type, too many items/levels/images, ids Clef rejects, WebP on OpenRouter) |
+| 403 | `/api/*` called with a `Host` that isn't localhost/`HOST`/`ALLOWED_HOSTS`, or a cross-origin `Origin`; also a static path outside `public/` |
+| 404 | unknown `/api/*` route (JSON envelope) or missing static file |
+| 405 | a method other than GET/HEAD on a static path |
+| 413 | body over 16 MiB |
+| 415 | POST without `Content-Type: application/json` |
 | 401 | the provider has no credentials configured (and `mock` is off), or the provider rejected them |
-| 402 / 403 / 404 / 429 / 5xx | passed through from the provider, with a hint |
+| 402 / 403 / 404 / 429 / 5xx | also passed through from the provider, with a hint |
 | 502 | provider unreachable, or a 2xx without `answers` |
 | 504 | upstream timeout (`UPSTREAM_TIMEOUT_MS`, default 60 s) |
 
@@ -183,7 +195,7 @@ Extract:
 ## Rules
 
 - Keys never reach the browser: not in `/api/health`, `/api/catalog`, or `upstream` previews.
-- Validate before calling upstream. Bad input → 400 with a `hint`, and no network call.
+- Validate before calling upstream. Bad input → 400 with a `hint`, and no network call (validation runs before the catalog lookup, so not even model discovery).
 - Mock mode (`PLAYGROUND_MOCK=1` server-wide, or `"mock": true` per request) skips the
   network and synthesizes answers in the real shapes, with `"mock": true`. Mock extraction
   answers point their spans at real text in the state.

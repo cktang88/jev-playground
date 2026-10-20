@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createCatalog } from "./lib/catalog.mjs";
 import { loadConfig } from "./lib/config.mjs";
 import { PlaygroundError } from "./lib/errors.mjs";
-import { parseJsonBody, readBody, sendError, sendJson, serveStatic } from "./lib/http.mjs";
+import { checkApiRequest, parseJsonBody, readBody, sendError, sendJson, serveStatic } from "./lib/http.mjs";
 import { providers } from "./lib/providers/index.mjs";
 import { createRunner } from "./lib/run.mjs";
 import { describeTasks } from "./lib/tasks/index.mjs";
@@ -60,12 +60,14 @@ const ROUTES = {
 
 const server = http.createServer(async (request, response) => {
   const startedAt = Date.now();
-  const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  // A fixed base: the Host header is client-controlled and may not parse.
+  const url = new URL(request.url, "http://localhost");
   const pathname = url.pathname;
   let status = 500;
 
   try {
-    const route = ROUTES[`${request.method} ${pathname}`];
+    const route = Object.hasOwn(ROUTES, `${request.method} ${pathname}`) ? ROUTES[`${request.method} ${pathname}`] : null;
+    if (pathname.startsWith("/api/")) checkApiRequest(request, config);
     if (route) {
       const result = await route(request, url);
       status = result.status;
@@ -79,6 +81,7 @@ const server = http.createServer(async (request, response) => {
     }
   } catch (failure) {
     if (!(failure instanceof PlaygroundError)) console.error(`unhandled error: ${failure?.stack || failure}`);
+    if (failure?.status === 413) response.shouldKeepAlive = false;
     if (!response.headersSent) status = sendError(response, failure);
     else response.end();
   }

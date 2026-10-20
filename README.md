@@ -25,7 +25,7 @@ decisions models show up without a code change. Any other model id can be typed 
 | `noul` | a yes/no question | probability from 0 to 1 that the answer is yes |
 | `choice` | pick one from a fixed list | the winning option, a probability per option, confidence |
 | `score` | rate against ordered levels | a probability-weighted score, a probability per level, confidence |
-| `box` | find something in an image (experimental, Jev 1.14) | four edges as fractions of the image, confidence |
+| `box` | find something in an image (experimental, Jev 1.14; see the image caveat below) | four edges as fractions of the image, confidence |
 
 **Extract** (`fields`): the System One extraction schema, from Cloudflare's Clairic.
 
@@ -35,9 +35,12 @@ decisions models show up without a code change. Any other model id can be typed 
 | `number` | `unit`, `decimals`, `integer` | a number read from or computed from the input |
 | `date` / `time` / `datetime` | — | ISO values, read or computed (e.g. issue date + net 30) |
 | `duration` | `unit` (seconds…years), `integer`, `decimals` | a length of time |
-| `list` | `items` (`text` / `number` / `date`) | every match in input order, with spans |
+| `list` | `items` (`text` / `number` / `date`), `decimals` | every match in input order, with spans |
 | `estimate` | `min`, `max`, `step`, `scale` (`linear`/`log`), `unit` | median, mean, 80% interval (`p10`–`p90`), `p_below`/`p_above` |
-| `forecast` | `horizon` (1–64), `interval`, `min`, `max`, `scale` | one median + 80% interval per future step |
+| `forecast` | `horizon` (1–64), `interval`, `min`, `max`, `scale`, `unit` | one median + 80% interval per future step |
+
+`text`, `number`, `date`, `time`, `datetime` and `duration` also take `null_threshold` (0–1].
+Each type accepts only its own parameters plus `instructions`; anything else is rejected.
 
 Every scalar extraction answer also carries `p_null` (the probability that the value is not
 in the input) and `confidence`. When `p_null` crosses `null_threshold` (default 0.5), the
@@ -77,6 +80,13 @@ and you can run them by ticking **Mock**.
 | `OPENROUTER_DISCOVER` | on | `0` = skip live model discovery, use the curated list |
 | `UPSTREAM_TIMEOUT_MS` | `60000` | per-request upstream timeout |
 | `PORT`, `HOST` | `4321`, `127.0.0.1` | where the server listens |
+| `ALLOWED_HOSTS` | — | extra comma-separated `Host` names the API accepts besides localhost and `HOST` (`*` = any) |
+| `OPENROUTER_BASE_URL`, `CLOUDFLARE_API_BASE` | `https://openrouter.ai`, `https://api.cloudflare.com/client/v4` | upstream base URLs (e.g. for a gateway) |
+| `OPENROUTER_REFERER`, `OPENROUTER_TITLE` | `http://localhost`, `System One Playground` | OpenRouter attribution headers |
+
+The API only answers requests that a page on the playground could have sent: a localhost
+(or allowed) `Host`, a same-origin `Origin` when a browser sends one, and
+`Content-Type: application/json` on POSTs. Other web pages can't spend your keys.
 
 ## Using the playground
 
@@ -85,7 +95,10 @@ and you can run them by ticking **Mock**.
    answer to the same question, with an *agree / disagree* line on top. The run table
    compares latency, input tokens, and cost (marked `est.` when computed from list price).
 2. **State.** Paste text or JSON, or start from a preset. Attach up to four images (drop,
-   paste, or pick a file) for vision models and `box` questions.
+   paste, or pick a file) for vision models and `box` questions. Workers AI documents its
+   image format. OpenRouter's decisions schema has no image field, so the playground sends
+   TypeSafe's `assets` format, and whether OpenRouter forwards it is **unconfirmed**. If
+   images seem ignored on OpenRouter, that is why.
 3. **Questions / fields.** The editors come from the type specs the server publishes, so
    every parameter above has a control.
 4. **Raw.** Each model's exact upstream request (with the key and image bytes redacted) and
